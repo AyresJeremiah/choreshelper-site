@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Support - ChoresHelper</title>
+<meta name="description" content="Help getting started with ChoresHelper, plus answers to common questions.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site"><div class="wrap">
+<a class="brand" href="index.html">ChoresHelper</a>
+<nav aria-label="Main"><ul><li><a href="index.html">Home</a></li><li><a href="setup.html">Self-host setup</a></li><li><a href="support.html" aria-current="page">Support</a></li><li><a href="privacy.html">Privacy</a></li></ul></nav>
+</div></header>
+<main id="main"><div class="wrap">
+<h1>Support</h1>
+<p class="lead">Help with installing, connecting and using ChoresHelper.</p>
+
+<h2>Getting started</h2>
+<ol>
+<li><strong>Install a server.</strong> ChoresHelper needs a small server on your home network. Follow the <a href="setup.html">self-hosting quick start</a>.</li>
+<li><strong>Install the app</strong> on your iPhone or iPad from the App Store. The app is Unlisted, so use the link at the top of the <a href="index.html">home page</a> or ask your household admin for it.</li>
+<li><strong>Connect.</strong> Join the same Wi-Fi network as the server. The app may find it automatically; otherwise enter the server's IP address (for example <code>192.168.1.50</code>).</li>
+<li><strong>Trust the certificate on first connect.</strong> The server makes its own secure certificate. The first time you connect, the app shows the certificate's fingerprint. Confirm it to continue; the app remembers it. This works much like setting up Home Assistant.</li>
+<li><strong>Sign in</strong> with the account your admin created. The first admin account is created during server setup.</li>
+</ol>
+<p>Just want a look around? Tap <strong>Try the demo</strong> on the app's first screen to explore a sample household without a server.</p>
+
+<h2>FAQ</h2>
+<details><summary>The app can't connect to my server</summary>
+<ul>
+<li>Make sure your phone is on the same network (and VLAN) as the server, not on cellular or a guest network.</li>
+<li>Check the server is running: <code>docker compose ps</code> should show every service as running.</li>
+<li>Open <code>https://&lt;server-ip&gt;/api/info</code> in Safari on the phone. If that fails, the problem is the network or firewall, not the app.</li>
+<li>Allow <strong>Local Network</strong> access for ChoresHelper in iOS Settings, under Privacy &amp; Security, then Local Network.</li>
+<li>If you use a firewall, port 443 (HTTPS) must be open from your devices to the server.</li>
+</ul></details>
+<details><summary>I see a certificate warning or a certificate error</summary>
+<p>The server issues its own certificate, so devices do not trust it until you say so. In the app, confirm the fingerprint on first connect. In a browser, use the one-time "continue anyway" option. If the server's address changed, or its storage was recreated, it has a new certificate; remove the saved server in the app and connect again.</p></details>
+<details><summary>I can't sign in</summary>
+<ul>
+<li>Usernames and passwords are set by your household admin. Ask them to reset your password.</li>
+<li>If you are the admin and never created an account, set the initial admin username and password in the server's <code>.env</code> file. See the <a href="setup.html#admin">setup guide</a>.</li>
+<li>Check the phone's date and time are set automatically.</li>
+</ul></details>
+<details><summary>Reminders aren't firing</summary>
+<ul>
+<li>Allow notifications for ChoresHelper in iOS Settings, under Notifications.</li>
+<li>For arrival reminders, allow Location. "Always" lets ChoresHelper remind you the moment you get home even if the app is closed; without it, reminders arrive at the times your household sets. Location never leaves your device.</li>
+<li>Focus modes and Low Power Mode can delay or hide notifications.</li>
+<li>Open the app now and then so it can refresh the chore list from your server.</li>
+</ul></details>
+<details><summary>How do I delete my account?</summary>
+<p>In the app, open <strong>Settings</strong>, then <strong>Account</strong>, then <strong>Delete account</strong>. Your household admin can also delete any login from the admin area. Deleting a login deletes your password and signs you out everywhere. Your past chore history stays with the household's member record until an admin removes the member. The last remaining admin account cannot be deleted. See the <a href="privacy.html#account-deletion">Privacy Policy</a>.</p></details>
+<details><summary>Does ChoresHelper collect my data?</summary>
+<p>No. The developer receives nothing. Everything stays on your household's server. See the <a href="privacy.html">Privacy Policy</a>.</p></details>
+
+<h2>Contact</h2>
+<p>Still stuck? Open an issue on <a href="https://github.com/AyresJeremiah/choreshelper-site/issues">GitHub Issues</a>. Please do not post passwords, server addresses or other private details.</p>
+</div></main>
+<footer class="site"><div class="wrap">
+<p>ChoresHelper is a self-hosted household app. Questions or problems? <a href="https://github.com/AyresJeremiah/choreshelper-site/issues">Open an issue</a>. <a href="privacy.html">Privacy Policy</a> &middot; <a href="support.html">Support</a></p>
+</div></footer>
+</body>
+</html>

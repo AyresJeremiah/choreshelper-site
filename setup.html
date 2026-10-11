@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Self-hosting quick start - ChoresHelper</title>
+<meta name="description" content="Run your own ChoresHelper server with Docker Compose in a few minutes.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site"><div class="wrap">
+<a class="brand" href="index.html">ChoresHelper</a>
+<nav aria-label="Main"><ul><li><a href="index.html">Home</a></li><li><a href="setup.html" aria-current="page">Self-host setup</a></li><li><a href="support.html">Support</a></li><li><a href="privacy.html">Privacy</a></li></ul></nav>
+</div></header>
+<main id="main"><div class="wrap">
+<h1>Self-hosting quick start</h1>
+<p class="lead">Run a ChoresHelper server on a Raspberry Pi or any small Linux machine on your home network.</p>
+
+<h2>What you need</h2>
+<ul>
+<li>A 64-bit Linux machine (Raspberry Pi 4 or 5 with 4 GB or more, or any amd64 or arm64 box) on your home network. An SSD is better than an SD card for the database.</li>
+<li><a href="https://docs.docker.com/engine/install/">Docker Engine</a> with the Compose plugin.</li>
+<li>A fixed LAN address for the server, such as <code>192.168.1.50</code> (reserve it in your router).</li>
+</ul>
+
+<h2>1. Create a folder and the files</h2>
+<pre><code>mkdir -p ~/choreshelper &amp;&amp; cd ~/choreshelper</code></pre>
+<p>Create <code>.env</code> (replace the values):</p>
+<pre><code># The server's LAN IP address, as devices will reach it
+CHORES_HOSTNAME=192.168.1.50
+# Which release to run
+API_VERSION=0.8.0
+POSTGRES_PASSWORD=change-me-use-openssl-rand-base64-24
+HOUSEHOLD_NAME=Our Household
+HOUSEHOLD_TIMEZONE=America/Chicago
+
+# First run only: creates the first admin account
+SETUP_INITIAL_ADMIN_USERNAME=admin
+SETUP_INITIAL_ADMIN_PASSWORD=choose-a-real-password</code></pre>
+<p>Create <code>Caddyfile</code>. Caddy provides HTTPS using its own local certificate authority, with no internet needed:</p>
+<pre><code>{
+	default_sni {$CHORES_HOSTNAME}
+}
+
+{$CHORES_HOSTNAME} {
+	tls internal
+	encode zstd gzip
+	reverse_proxy api:8080 {
+		header_up X-Forwarded-Host {host}
+	}
+}</code></pre>
+<p>Create <code>docker-compose.yml</code>:</p>
+<pre><code>services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: choreshelper
+      POSTGRES_USER: choreshelper
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U choreshelper"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: ghcr.io/ayresjeremiah/choreshelper-api:${API_VERSION}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      Identity__Issuer: "https://${CHORES_HOSTNAME}"
+      ConnectionStrings__Chores: "Host=postgres;Port=5432;Database=choreshelper;Username=choreshelper;Password=${POSTGRES_PASSWORD}"
+      Database__MigrateOnStartup: "true"
+      Household__Name: ${HOUSEHOLD_NAME:-ChoresHelper}
+      Household__TimeZone: ${HOUSEHOLD_TIMEZONE:-America/Chicago}
+      Setup__InitialAdminUsername: ${SETUP_INITIAL_ADMIN_USERNAME:-}
+      Setup__InitialAdminPassword: ${SETUP_INITIAL_ADMIN_PASSWORD:-}
+      Discovery__Enabled: "false"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      CHORES_HOSTNAME: ${CHORES_HOSTNAME}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:</code></pre>
+<div class="note"><strong>Keep the <code>caddy_data</code> volume.</strong> It holds the server's certificate. If you delete it, devices will see a new certificate and need to reconnect.</div>
+
+<h2>2. Start it</h2>
+<pre><code>docker compose up -d
+docker compose ps
+curl -k https://192.168.1.50/api/info</code></pre>
+<p>The first start creates the database and runs migrations. Once <code>/api/info</code> responds, the server is ready.</p>
+
+<h2 id="admin">3. First admin account</h2>
+<p>A fresh install has no accounts. On its first start with an empty database, the server creates one admin from <code>SETUP_INITIAL_ADMIN_USERNAME</code> and <code>SETUP_INITIAL_ADMIN_PASSWORD</code>. After that these values are ignored. Sign in at <code>https://&lt;server-ip&gt;</code> in a browser (accept the one-time certificate warning), change the password, add your household members and their accounts, then <strong>remove the two <code>SETUP_</code> lines from <code>.env</code></strong> so no password sits on disk.</p>
+
+<h2>4. Connect the app</h2>
+<p>Install the ChoresHelper app, join the same Wi-Fi, enter the server's IP address and confirm the certificate fingerprint on first connect. More in <a href="support.html">Support</a>.</p>
+
+<h2>Updating and backups</h2>
+<ul>
+<li>Update: set a new <code>API_VERSION</code> in <code>.env</code>, then <code>docker compose pull &amp;&amp; docker compose up -d</code>. Migrations apply on start.</li>
+<li>Back up the database regularly, for example: <code>docker compose exec postgres pg_dump -Fc -U choreshelper choreshelper &gt; backup.dump</code>. Copy the file somewhere off the server.</li>
+</ul>
+
+<h2>Security notes</h2>
+<ul>
+<li>Do not expose the server to the internet. It is designed for a trusted home network.</li>
+<li>Postgres is not published outside the Compose network.</li>
+<li>Use strong, unique passwords and keep the host updated.</li>
+</ul>
+<p>Problems? See <a href="support.html">Support</a>.</p>
+</div></main>
+<footer class="site"><div class="wrap">
+<p>ChoresHelper is a self-hosted household app. Questions or problems? <a href="https://github.com/AyresJeremiah/choreshelper-site/issues">Open an issue</a>. <a href="privacy.html">Privacy Policy</a> &middot; <a href="support.html">Support</a></p>
+</div></footer>
+</body>
+</html>
